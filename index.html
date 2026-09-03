@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SEDAŞ Bölgesi Planlı Elektrik Kesintileri</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #18323a;
+      --muted: #6d7f84;
+      --line: #d9e5e5;
+      --panel: #ffffff;
+      --accent: #e35d3f;
+      --accent-soft: #fff3ee;
+      --deep: #123f47;
+      --deep-soft: #1f6068;
+      --mint: #d9f0e8;
+      --map-base: #edf5f3;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #e8f0ef; color: var(--ink); font: 14px/1.5 Arial, Helvetica, sans-serif; }
+    .shell { max-width: 1280px; margin: 0 auto; background: var(--panel); min-height: 100vh; box-shadow: 0 0 30px rgba(18, 63, 71, .1); }
+    .app-header { color: #fff; background: linear-gradient(120deg, var(--deep) 0%, #18535b 62%, var(--deep-soft) 100%); }
+    .app-header-top { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px 30px; }
+    .app-brand { display: flex; align-items: center; gap: 13px; color: #fff; text-decoration: none; }
+    .app-mark { display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid rgba(255, 255, 255, .35); border-radius: 14px; color: var(--deep); background: var(--mint); font-size: 25px; }
+    .app-name { display: block; font-size: 25px; font-weight: 800; letter-spacing: -.05em; line-height: 1; }
+    .app-name strong { color: #ffd36a; }
+    .app-brand small { display: block; margin-top: 6px; color: #c2dcda; font-size: 11px; letter-spacing: .04em; }
+    .app-header-meta { display: flex; align-items: center; gap: 16px; color: #c9e1df; font-size: 11px; }
+    .live-pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid rgba(255, 255, 255, .2); border-radius: 999px; color: #fff; background: rgba(255, 255, 255, .1); font-weight: 700; }
+    .live-pill::before { width: 7px; height: 7px; border-radius: 50%; background: #74e0a3; content: ''; }
+    .page-intro { padding: 24px 30px 20px; border-bottom: 1px solid var(--line); }
+    .breadcrumb { margin-bottom: 17px; color: #7e9294; font-size: 11px; }
+    .page-intro-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    .eyebrow { margin-bottom: 5px; color: var(--accent); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    h1, h2, p { margin: 0; }
+    h1 { font-size: clamp(24px, 3vw, 34px); font-weight: 800; letter-spacing: -.04em; color: var(--deep); }
+    .subtitle { max-width: 760px; margin-top: 6px; color: var(--muted); }
+    .service-badge { display: grid; grid-template-columns: auto 1fr; column-gap: 9px; align-items: center; min-width: 170px; padding: 12px 15px; border: 1px solid #f0d9d7; border-radius: 8px; background: #fff8f7; }
+    .service-badge span { grid-row: span 2; color: var(--accent); font-size: 25px; }
+    .service-badge b { color: var(--navy); font-size: 14px; }
+    .service-badge small { color: var(--muted); font-size: 10px; }
+    .controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 18px; margin: 18px 30px 20px; padding: 15px; background: #f5faf9; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 4px 14px rgba(18, 63, 71, .05); }
+    label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; font-weight: 600; }
+    input[type=date], input[type=range] { accent-color: var(--accent); }
+    input[type=date], select { min-height: 38px; border: 1px solid #cbd2df; border-radius: 6px; padding: 7px 10px; font: inherit; color: var(--ink); background: var(--panel); }
+    .time-control { flex: 0 1 220px; min-width: 180px; max-width: 220px; margin-left: auto; }
+    .time-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .time-display { display: grid; justify-items: end; gap: 1px; }
+    .time-date { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .live-clock { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 15px; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .time-value { color: var(--accent); font-variant-numeric: tabular-nums; }
+    input[type=range] { width: 100%; min-height: 30px; }
+    .time-filter-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 11px; }
+    .now-button { min-height: 25px; padding: 3px 8px; border: 1px solid #cbd2df; border-radius: 5px; background: white; color: var(--ink); font-size: 11px; }
+    button { min-height: 38px; padding: 8px 14px; border: 0; border-radius: 6px; font: inherit; font-weight: 700; cursor: pointer; }
+    .primary { background: var(--accent); color: white; }
+    .primary:hover { background: #cf3834; }
+    .primary:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid #94a9e8; outline-offset: 2px; }
+    .state { align-self: center; color: var(--muted); font-size: 13px; }
+    .content { display: grid; grid-template-columns: minmax(0, 1fr) 350px; min-height: 680px; margin: 0 30px 22px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 4px 16px rgba(18, 63, 71, .07); }
+    #map { min-height: 680px; background: var(--map-base); }
+    .details { border-left: 1px solid var(--line); padding: 18px; overflow: auto; max-height: 680px; background: #fff; }
+    .details-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    h2 { font-size: 18px; font-weight: 650; }
+    .count { font-variant-numeric: tabular-nums; color: var(--accent); }
+    .hint, .error { padding: 12px; border-radius: 8px; color: var(--muted); background: #f4f8fa; }
+    .error { color: #9a321d; background: var(--accent-soft); }
+    .record { width: 100%; text-align: left; margin: 0 0 10px; padding: 12px; background: #fbfcfe; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; }
+    .record:hover { border-color: #b8c4da; background: #f7f9fd; }
+    .record.status-active { border-left: 5px solid #c8462b; background: #fff1ed; }
+    .record.status-finished { border-left: 5px solid #4c9b5f; background: #eff9f0; }
+    .record.status-upcoming { border-left: 5px solid #d39a36; background: #fff9ed; }
+    .record-top { display: flex; justify-content: space-between; gap: 12px; }
+    .record-time { color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .record-place { display: block; margin-top: 5px; font-weight: 650; }
+    .record-neighborhood { display: block; }
+    .record-district { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; }
+    .record-streets { display: block; margin-top: 4px; color: var(--ink); font-size: 13px; line-height: 1.35; }
+    .record-label { color: var(--muted); font-weight: 650; }
+    .record-meta { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; }
+    .record-plan { display: block; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+    .record-plan:first-child { margin-top: 8px; padding-top: 0; border-top: 0; }
+    .record-plan-top { display: flex; justify-content: space-between; gap: 12px; font-weight: 650; }
+    .record-status { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 700; }
+    .status-active .record-status { color: #b43c24; }
+    .status-finished .record-status { color: #327b42; }
+    .status-upcoming .record-status { color: #986d1f; }
+    footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; padding: 16px 30px; border-top: 1px solid var(--line); color: var(--muted); background: #f4f9f8; font-size: 12px; }
+    footer a { color: #176488; }
+    .leaflet-popup-content { margin: 12px 14px; }
+    .popup-title { font-weight: 700; margin-bottom: 4px; }
+    .popup-meta { color: var(--muted); font-size: 12px; }
+    @media (max-width: 850px) {
+      .content { grid-template-columns: 1fr; }
+      #map { min-height: 58vh; }
+      .details { border-left: 0; border-top: 1px solid var(--line); max-height: none; }
+    }
+    @media (max-width: 500px) {
+      .app-header-top, .page-intro, footer { padding-left: 15px; padding-right: 15px; }
+      .app-header-top { align-items: flex-start; }
+      .app-header-meta { display: block; text-align: right; }
+      .page-intro-row { align-items: flex-start; }
+      .service-badge { min-width: 0; }
+      .controls { margin-left: 15px; margin-right: 15px; }
+      .content { margin-left: 15px; margin-right: 15px; }
+      .controls > * { width: 100%; }
+      .state { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="app-header">
+      <div class="app-header-top">
+        <a class="app-brand" href="/elektrik" aria-label="Kesinti Haritası ana sayfa">
+          <span class="app-mark" aria-hidden="true">⚡</span>
+          <span><span class="app-name">Kesinti <strong>Haritası</strong></span><small>SEDAŞ hizmet bölgesi · planlı elektrik kesintileri</small></span>
+        </a>
+        <div class="app-header-meta"><span class="live-pill">Planlı kesinti verisi</span><span>Günlük önbellek · manuel güncelleme</span></div>
+      </div>
+    </header>
+    <section class="page-intro">
+      <div class="breadcrumb">SEDAŞ hizmet bölgesi / Planlı elektrik kesintileri</div>
+      <div class="page-intro-row">
+        <div><div class="eyebrow">SEDAŞ hizmet bölgesi</div><h1>Planlı Elektrik Kesintileri</h1><p class="subtitle">SEDAŞ planlarını il, ilçe, mahalle ve cadde/sokak bazında harita üzerinde takip edin.</p></div>
+        <div class="service-badge"><span aria-hidden="true">⚡</span><b>SEDAŞ</b><small>Planlı kesinti servisi</small></div>
+      </div>
+    </section>
+    <section class="controls" aria-label="Harita kontrolleri">
+      <label>Tarih
+        <input id="dateInput" type="date">
+      </label>
+      <label>İl
+        <select id="provinceInput" aria-label="İl">
+          <option value="KOCAELİ" selected>Kocaeli</option>
+          <option value="BOLU">Bolu</option>
+          <option value="SAKARYA">Sakarya</option>
+          <option value="DÜZCE">Düzce</option>
+          <option value="TÜMÜ">Tüm iller</option>
+        </select>
+      </label>
+      <label>İlçe
+        <select id="districtInput" aria-label="İlçe">
+          <option value="TÜMÜ" selected>Tümü</option>
+          <option value="BAŞİSKELE">Başiskele</option>
+          <option value="ÇAYIROVA">Çayırova</option>
+          <option value="DARICA">Darıca</option>
+          <option value="DERİNCE">Derince</option>
+          <option value="DİLOVASI">Dilovası</option>
+          <option value="GEBZE">Gebze</option>
+          <option value="GÖLCÜK">Gölcük</option>
+          <option value="İZMİT">İzmit</option>
+          <option value="KANDIRA">Kandıra</option>
+          <option value="KARAMÜRSEL">Karamürsel</option>
+          <option value="KARTEPE">Kartepe</option>
+          <option value="KÖRFEZ">Körfez</option>
+        </select>
+      </label>
+      <label>Mahalle
+        <select id="neighborhoodInput" aria-label="Mahalle">
+          <option value="ALL">Tümü</option>
+        </select>
+      </label>
+      <button id="refreshButton" class="primary" type="button">Veri Güncelle</button>
+      <div class="time-control">
+        <div class="time-heading"><label for="timeInput">Harita saati</label><span class="time-display"><span id="timeDate" class="time-date">—</span><span id="liveClock" class="live-clock">--:--:--</span></span></div>
+        <input id="timeInput" type="range" min="0" max="1439" step="1" value="0" aria-label="Harita saati">
+        <div class="time-filter-row"><span>Filtrelenen saat: <strong id="timeValue" class="time-value">00:00</strong></span><button id="nowButton" class="now-button" type="button">Şimdi</button></div>
+      </div>
+      <span id="state" class="state" aria-live="polite">SEDAŞ bağlantısı hazırlanıyor…</span>
+    </section>
+    <main class="content">
+      <div id="map" role="img" aria-label="SEDAŞ bölgesi planlı elektrik kesintileri haritası"></div>
+      <aside class="details" aria-live="polite">
+        <div class="details-header"><h2>Planlı kesintiler</h2><span id="activeCount" class="count">0</span></div>
+        <div id="recordList"><p class="hint">Veri yükleniyor…</p></div>
+      </aside>
+    </main>
+    <footer>
+      <span id="updatedAt">SEDAŞ’tan alınma zamanı: —</span>
+      <span><a href="https://www.sedas.com/Tr/SupplyContinuityUrl/PlannedView#" target="_blank" rel="noreferrer">SEDAŞ planlı kesinti verisi</a> · Açık veri önbelleği · © OpenStreetMap contributors</span>
+    </footer>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    const provinceCenters = {
+      'TÜMÜ': [40.76, 29.90, 10],
+      'BOLU': [40.735, 31.606, 10],
+      'KOCAELİ': [40.76, 29.90, 10],
+      'SAKARYA': [40.77, 30.40, 10],
+      'DÜZCE': [40.84, 31.15, 10]
+    };
+    const districtOptions = {
+      'BOLU': ['MERKEZ', 'GEREDE', 'GÖYNÜK', 'KIBRISCIK', 'MENGEN', 'MUDURNU', 'SEBEN', 'DÖRTDİVAN', 'YENİÇAĞA'],
+      'KOCAELİ': ['BAŞİSKELE', 'ÇAYIROVA', 'DARICA', 'DERİNCE', 'DİLOVASI', 'GEBZE', 'GÖLCÜK', 'İZMİT', 'KANDIRA', 'KARAMÜRSEL', 'KARTEPE', 'KÖRFEZ'],
+      'SAKARYA': ['AKYAZI', 'GEYVE', 'HENDEK', 'KARASU', 'KAYNARCA', 'SAPANCA', 'KOCAALİ', 'PAMUKOVA', 'TARAKLI', 'FERİZLİ', 'KARAPÜRÇEK', 'SÖĞÜTLÜ', 'ADAPAZARI', 'ARİFİYE', 'ERENLER', 'SERDİVAN'],
+      'DÜZCE': ['AKÇAKOCA', 'MERKEZ', 'YIĞILCA', 'CUMAYERİ', 'GÖLYAKA', 'ÇİLİMLİ', 'GÜMÜŞOVA', 'KAYNAŞLI']
+    };
+    const districtCenters = {
+      'BAŞİSKELE': [40.6768, 29.9327, 13],
+      'ÇAYIROVA': [40.8278, 29.3712, 13],
+      'DARICA': [40.7682, 29.3715, 13],
+      'DERİNCE': [40.7563, 29.8303, 13],
+      'DİLOVASI': [40.7795, 29.5356, 13],
+      'GEBZE': [40.8028, 29.4307, 13],
+      'GÖLCÜK': [40.7166, 29.8214, 13],
+      'KÖRFEZ': [40.774875, 29.727656, 13],
+      'İZMİT': [40.7654, 29.9408, 13],
+      'KANDIRA': [41.0705, 30.1526, 13],
+      'KARAMÜRSEL': [40.6914, 29.6161, 13],
+      'KARTEPE': [40.7535, 30.0264, 13]
+    };
+    const map = L.map('map', { zoomControl: true }).setView(provinceCenters['KOCAELİ'].slice(0, 2), provinceCenters['KOCAELİ'][2]);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap katkıcıları' }).addTo(map);
+    const state = { payload: null, payloads: {}, plannedLayer: null, activeLayer: null, fitted: false, loading: false };
+    const provinceInput = document.getElementById('provinceInput');
+    const districtInput = document.getElementById('districtInput');
+    const dateInput = document.getElementById('dateInput');
+    const neighborhoodInput = document.getElementById('neighborhoodInput');
+    const timeInput = document.getElementById('timeInput');
+    const timeValue = document.getElementById('timeValue');
+    const recordList = document.getElementById('recordList');
+    const activeCount = document.getElementById('activeCount');
+    const status = document.getElementById('state');
+    const refreshButton = document.getElementById('refreshButton');
+    const updatedAt = document.getElementById('updatedAt');
+    const timeDate = document.getElementById('timeDate');
+    const liveClock = document.getElementById('liveClock');
+    const nowButton = document.getElementById('nowButton');
+    state.followCurrentTime = true;
+
+    function hourText(value) {
+      const minutes = Math.max(0, Math.min(1439, Number(value) || 0));
+      return String(Math.floor(minutes / 60)).padStart(2, '0') + ':' + String(minutes % 60).padStart(2, '0');
+    }
+    function minutes(text) {
+      const parts = String(text || '').split(':').map(Number);
+      return Number.isFinite(parts[0]) && Number.isFinite(parts[1]) ? parts[0] * 60 + parts[1] : 0;
+    }
+    function parseDateValue(value) {
+      const text = String(value || '').trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+      const match = text.match(/^(\d{2})[./-](\d{2})[./-](\d{4})$/);
+      return match ? match[3] + '-' + match[2] + '-' + match[1] : '';
+    }
+    function dateMinute(value, time) {
+      const parts = parseDateValue(value).split('-').map(Number);
+      if (parts.length !== 3 || parts.some(part => !Number.isFinite(part))) return NaN;
+      // Aynı zaman ölçeğinde tarih ve saati birlikte karşılaştırıyoruz.
+      // Date.UTC ay ve yıl geçişlerinde de doğru gün farkını korur.
+      return Date.UTC(parts[0], parts[1] - 1, parts[2]) / 60000 + minutes(time);
+    }
+    function recordInterval(record) {
+      const startDate = parseDateValue(record.date) || dateInput.value;
+      const startTime = minutes(record.start);
+      const endTime = minutes(record.end);
+      const endDate = endTime < startTime ? dateOffsetValue(startDate, 1) : startDate;
+      return { start: dateMinute(startDate, record.start), end: dateMinute(endDate, record.end) };
+    }
+    function selectedMoment() {
+      return dateMinute(dateInput.value, hourText(timeInput.value));
+    }
+    function active(record, selected) {
+      const interval = recordInterval(record);
+      return Number.isFinite(interval.start) && Number.isFinite(interval.end) && selected >= interval.start && selected < interval.end;
+    }
+    function escapeHtml(value) {
+      return String(value || '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+    }
+    function popup(feature) {
+      const p = feature.properties || {};
+      const street = p.street || p.requestedStreet || 'Mahalle merkezi';
+      return '<div class="popup-title">' + escapeHtml(p.outageType || 'Planlı Kesinti') + ' · PK ' + escapeHtml(p.pk) + '</div><div>Mahalle: ' + escapeHtml(p.neighborhood) + '</div><div>Cadde/sokak: ' + escapeHtml(street) + '</div><div class="popup-meta">Saat: ' + escapeHtml(p.start) + '–' + escapeHtml(p.end) + '</div>';
+    }
+    function neighborhoodAreas(record) {
+      if (record.neighborhoodCards?.length) return record.neighborhoodCards;
+      const neighborhoods = record.neighborhoods?.length ? record.neighborhoods : ['Belirtilmemiş'];
+      return neighborhoods.map(neighborhood => ({
+        neighborhood,
+        streets: record.streets || [],
+        streetCount: record.streetCount ?? record.streets?.length ?? 0,
+        matchedStreetCount: record.matchedStreetCount ?? record.matchedStreets?.length ?? 0,
+        featureCount: record.featureCount || 0
+      }));
+    }
+    function nameKey(value) {
+      return String(value || '').toLocaleUpperCase('tr-TR').replace(/[İı]/g, 'I').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z0-9]+/g, ' ').trim();
+    }
+    function localDateValue(value) {
+      const now = value || new Date();
+      return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    }
+    function dateOffsetValue(value, offset) {
+      const parts = String(value || '').split('-').map(Number);
+      const day = new Date(parts[0], parts[1] - 1, parts[2]);
+      day.setDate(day.getDate() + offset);
+      return localDateValue(day);
+    }
+    function localDateText(value) {
+      const parts = String(value || '').split('-');
+      return parts.length === 3 ? parts[2] + '.' + parts[1] + '.' + parts[0] : '—';
+    }
+    function currentMinutes(value) {
+      const now = value || new Date();
+      return now.getHours() * 60 + now.getMinutes();
+    }
+    function updateClock() {
+      const now = new Date();
+      liveClock.textContent = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+      timeDate.textContent = localDateText(dateInput.value);
+      if (state.followCurrentTime && dateInput.value === localDateValue(now)) {
+        const liveMinutes = currentMinutes(now);
+        if (Number(timeInput.value) !== liveMinutes) {
+          timeInput.value = String(liveMinutes);
+          draw();
+        }
+      }
+    }
+    function groupedNeighborhoods(records) {
+      const groups = new Map();
+      records.forEach(record => neighborhoodAreas(record).forEach(area => {
+        const key = (record.province || '') + '|' + record.district + '|' + nameKey(area.neighborhood);
+        if (!groups.has(key)) {
+          groups.set(key, { province: record.province || '', district: record.district, neighborhood: area.neighborhood, plans: [] });
+        }
+        groups.get(key).plans.push({ record, area });
+      }));
+      return Array.from(groups.values());
+    }
+    function neighborhoodMatches(province, district, neighborhood) {
+      return neighborhoodInput.value === 'ALL' || neighborhoodInput.value === (province || '') + '|' + district + '|' + nameKey(neighborhood);
+    }
+    function districtMatches(district) {
+      return districtInput.value === 'TÜMÜ' || nameKey(district) === nameKey(districtInput.value);
+    }
+    function outageStatus(record, selected) {
+      if (active(record, selected)) return 'active';
+      const interval = recordInterval(record);
+      return Number.isFinite(interval.end) && selected >= interval.end ? 'finished' : 'upcoming';
+    }
+    function statusText(status) {
+      return status === 'active' ? 'Devam ediyor' : status === 'finished' ? 'Bitti' : 'Başlamadı';
+    }
+    function populateNeighborhoods(payload) {
+      const options = new Map();
+      const selectedDistrict = districtInput.value;
+      (payload.records || []).filter(record => selectedDistrict === 'TÜMÜ' || nameKey(record.district) === nameKey(selectedDistrict)).forEach(record => neighborhoodAreas(record).forEach(area => {
+        const key = (record.province || '') + '|' + record.district + '|' + nameKey(area.neighborhood);
+        const label = provinceInput.value === 'TÜMÜ' ? (record.province || '') + ' · ' + record.district + ' · ' + area.neighborhood : districtInput.value === 'TÜMÜ' ? record.district + ' · ' + area.neighborhood : area.neighborhood;
+        options.set(key, label);
+      }));
+      neighborhoodInput.innerHTML = '<option value="ALL">Tümü</option>' + Array.from(options.entries()).sort((a, b) => a[1].localeCompare(b[1], 'tr')).map(([value, label]) => '<option value="' + escapeHtml(value) + '">' + escapeHtml(label) + '</option>').join('');
+      neighborhoodInput.value = 'ALL';
+    }
+    function draw() {
+      if (!state.payload) return;
+      const selected = selectedMoment();
+      const records = (state.payload.records || []).filter(record => districtMatches(record.district));
+      const allFeatures = (state.payload.features || []).filter(feature => districtMatches(feature.properties.district));
+      const activeKeys = new Set(records.filter(record => active(record, selected)).map(record => (record.province || '') + '|' + record.district + '|' + record.pk));
+      const visibleFeatures = allFeatures.filter(feature => neighborhoodMatches(feature.properties.province, feature.properties.district, feature.properties.neighborhood));
+      const activeFeatures = visibleFeatures.filter(feature => activeKeys.has((feature.properties.province || '') + '|' + feature.properties.district + '|' + feature.properties.pk));
+      if (state.plannedLayer) map.removeLayer(state.plannedLayer);
+      if (state.activeLayer) map.removeLayer(state.activeLayer);
+      const collection = features => ({ type: 'FeatureCollection', features });
+      state.plannedLayer = L.geoJSON(collection(visibleFeatures), {
+        style: { color: '#2f687e', weight: 4, opacity: 0.76, lineCap: 'round', lineJoin: 'round' },
+        pointToLayer: (feature, latlng) => L.circleMarker(latlng, { radius: 6, color: '#477486', weight: 2, fillColor: '#d8e9ef', fillOpacity: 0.8 }),
+        onEachFeature: (feature, layer) => layer.bindPopup(popup(feature))
+      }).addTo(map);
+      state.activeLayer = L.geoJSON(collection(activeFeatures), {
+        style: { color: '#d85b36', weight: 6, opacity: 0.9 },
+        pointToLayer: (feature, latlng) => L.circleMarker(latlng, { radius: 9, color: '#b94121', weight: 3, fillColor: '#f27b56', fillOpacity: 0.95 }),
+        onEachFeature: (feature, layer) => layer.bindPopup(popup(feature))
+      }).addTo(map);
+      if (!state.fitted && visibleFeatures.length) {
+        const bounds = state.plannedLayer.getBounds();
+        if (bounds.isValid()) map.fitBounds(bounds.pad(0.12));
+        state.fitted = true;
+      }
+      timeValue.textContent = hourText(timeInput.value);
+      timeDate.textContent = localDateText(dateInput.value);
+      const activeCards = groupedNeighborhoods(records).filter(group => neighborhoodMatches(group.province, group.district, group.neighborhood));
+      activeCount.textContent = activeCards.length;
+      const province = provinceInput.value === 'TÜMÜ' ? 'Tüm iller' : provinceInput.value;
+      const district = districtInput.value === 'TÜMÜ' ? 'Tümü' : districtInput.value;
+      recordList.innerHTML = activeCards.length ? activeCards.map(group => {
+        const cardStatus = group.plans.some(({ record }) => outageStatus(record, selected) === 'active') ? 'active' : group.plans.every(({ record }) => outageStatus(record, selected) === 'finished') ? 'finished' : 'upcoming';
+        const planRows = group.plans.map(({ record, area }) => {
+          const matched = area.matchedStreetCount ?? area.streets?.length ?? 0;
+          const total = area.streetCount ?? area.streets?.length ?? 0;
+          const streets = area.streets?.length ? area.streets.join(', ') : 'Eşleşen cadde/sokak bulunamadı';
+          const planStatus = outageStatus(record, selected);
+          const addressDistrictNote = area.addressDistrict && nameKey(area.addressDistrict) !== nameKey(record.district) ? ' · adres ilçe: ' + escapeHtml(area.addressDistrict) : '';
+          return '<span class="record-plan"><span class="record-plan-top"><span>PK ' + escapeHtml(record.pk) + ' · ' + escapeHtml(record.type || 'Planlı Kesinti') + '<span class="record-status">' + statusText(planStatus) + '</span></span><span class="record-time">' + escapeHtml(record.start) + '–' + escapeHtml(record.end) + '</span></span><span class="record-streets"><span class="record-label">Cadde/sokak:</span> ' + escapeHtml(streets) + '</span><span class="record-meta">' + matched + '/' + total + ' cadde-sokak eşleşti · ' + (area.featureCount ?? 0) + ' harita geometrisi' + addressDistrictNote + '</span></span>';
+        }).join('');
+        return '<button type="button" class="record status-' + cardStatus + '" data-province="' + escapeHtml(group.province) + '" data-district="' + escapeHtml(group.district) + '" data-neighborhood="' + escapeHtml(group.neighborhood) + '"><span class="record-top"><span>Mahalle: ' + escapeHtml(group.neighborhood) + '</span><span>' + group.plans.length + ' plan</span></span><span class="record-district"><span class="record-label">İl / İlçe:</span> ' + escapeHtml(group.province) + ' / ' + escapeHtml(group.district) + '</span>' + planRows + '</button>';
+      }).join('') : '<p class="hint">' + (records.length ? 'Bu saatte aktif planlı kesinti yok.' : 'Seçilen tarih, ' + escapeHtml(province) + ' / ' + escapeHtml(district) + ' kapsamı için kayıt bulunamadı.') + '</p>';
+      recordList.querySelectorAll('.record').forEach(button => button.addEventListener('click', () => {
+        const features = allFeatures.filter(feature => feature.properties.province === button.dataset.province && feature.properties.district === button.dataset.district && feature.properties.neighborhood === button.dataset.neighborhood);
+        const layer = L.geoJSON(collection(features));
+        if (layer.getBounds().isValid()) map.fitBounds(layer.getBounds().pad(0.3));
+      }));
+      const modeLabel = state.payload.dataMode === 'daily-cache' ? 'günlük önbellek' : 'manuel canlı güncelleme';
+      status.textContent = records.length + ' planlı kesinti · ' + activeCards.length + ' mahalle · ' + activeFeatures.length + ' aktif geometri · ' + modeLabel;
+    }
+    function applyPayload(payload) {
+      state.payload = payload;
+      populateNeighborhoods(payload);
+      state.fitted = false;
+      const fetchedAt = payload.dataMode === 'daily-cache' && payload.snapshotFetchedAt ? payload.snapshotFetchedAt : payload.fetchedAt;
+      const modeText = payload.dataMode === 'daily-cache' ? ' · günlük önbellek' : ' · manuel canlı güncelleme';
+      updatedAt.textContent = 'SEDAŞ’tan alınma zamanı: ' + new Date(fetchedAt).toLocaleString('tr-TR') + modeText;
+      draw();
+    }
+    function payloadKey(province, selectedDate) {
+      return province + '|' + selectedDate;
+    }
+    function populateDistricts(province) {
+      const values = province === 'TÜMÜ' ? Array.from(new Set(Object.values(districtOptions).flat())) : (districtOptions[province] || []);
+      districtInput.innerHTML = '<option value="TÜMÜ">Tümü</option>' + values.map(value => '<option value="' + escapeHtml(value) + '">' + escapeHtml(value.charAt(0) + value.slice(1).toLocaleLowerCase('tr-TR')) + '</option>').join('');
+      districtInput.value = 'TÜMÜ';
+    }
+    async function loadData(forceLive = false) {
+      if (state.loading) return;
+      const selectedDate = dateInput.value;
+      if (!selectedDate) return;
+      const selectedProvince = provinceInput.value;
+      const cachedPayload = state.payloads[payloadKey(selectedProvince, selectedDate)];
+      if (!forceLive && cachedPayload) {
+        const center = provinceCenters[selectedProvince] || provinceCenters['TÜMÜ'];
+        map.setView(center.slice(0, 2), center[2]);
+        applyPayload(cachedPayload);
+        return;
+      }
+      state.loading = true;
+      refreshButton.disabled = true;
+      status.textContent = forceLive ? 'Bugün ve yarın için SEDAŞ canlı sorgusu yapılıyor…' : 'Günlük önbellek yükleniyor…';
+      recordList.innerHTML = '<p class="hint">' + (forceLive ? 'Bugün ve yarının canlı SEDAŞ kayıtları açık veri önbelleğiyle eşleştiriliyor…' : 'Günlük SEDAŞ kaydı açık veri önbelleğiyle eşleştiriliyor…') + '</p>';
+      try {
+        const selectedDistrict = 'TÜMÜ';
+        const center = provinceCenters[selectedProvince] || provinceCenters['TÜMÜ'];
+        map.setView(center.slice(0, 2), center[2]);
+        const liveQuery = forceLive ? '&live=1' : '';
+        const requestedDates = forceLive ? [selectedDate, dateOffsetValue(selectedDate, 1)] : [selectedDate];
+        const results = await Promise.allSettled(requestedDates.map(async targetDate => {
+          const response = await fetch('/api/outages?province=' + encodeURIComponent(selectedProvince) + '&district=' + encodeURIComponent(selectedDistrict) + '&date=' + encodeURIComponent(targetDate) + liveQuery, { cache: 'no-store' });
+          const payload = await response.json();
+          if (!response.ok) throw new Error(targetDate + ': ' + (payload.error || 'Veri alınamadı'));
+          return payload;
+        }));
+        const primary = results[0];
+        if (primary.status === 'rejected') throw primary.reason;
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') state.payloads[payloadKey(selectedProvince, requestedDates[index])] = result.value;
+        });
+        applyPayload(state.payloads[payloadKey(selectedProvince, selectedDate)]);
+        const failedDates = results.map((result, index) => result.status === 'rejected' ? requestedDates[index] : null).filter(Boolean);
+        if (failedDates.length) status.textContent += ' · ' + failedDates.join(', ') + ' alınamadı';
+      } catch (error) {
+        state.payload = null;
+        if (state.plannedLayer) map.removeLayer(state.plannedLayer);
+        if (state.activeLayer) map.removeLayer(state.activeLayer);
+        activeCount.textContent = '0';
+        status.textContent = 'Veri alınamadı';
+        recordList.innerHTML = '<p class="error">' + escapeHtml(error.message) + '<br><br>Bu sayfayı <code>kocaeli-server.py</code> ile yerel sunucu üzerinden açın.</p>';
+      } finally {
+        state.loading = false;
+        refreshButton.disabled = false;
+      }
+    }
+    timeInput.addEventListener('input', () => { state.followCurrentTime = false; draw(); });
+    refreshButton.addEventListener('click', () => loadData(true));
+    dateInput.addEventListener('change', () => {
+      state.followCurrentTime = dateInput.value === localDateValue();
+      loadData(false);
+    });
+    districtInput.addEventListener('change', () => {
+      state.fitted = false;
+      neighborhoodInput.innerHTML = '<option value="ALL">Tümü</option>';
+      neighborhoodInput.value = 'ALL';
+      if (state.payload) {
+        populateNeighborhoods(state.payload);
+        draw();
+      } else {
+        loadData(false);
+      }
+    });
+    provinceInput.addEventListener('change', () => {
+      populateDistricts(provinceInput.value);
+      state.fitted = false;
+      neighborhoodInput.innerHTML = '<option value="ALL">Tümü</option>';
+      neighborhoodInput.value = 'ALL';
+      loadData(false);
+    });
+    neighborhoodInput.addEventListener('change', () => { state.fitted = false; draw(); });
+    nowButton.addEventListener('click', () => {
+      const today = localDateValue();
+      const dateChanged = dateInput.value !== today;
+      dateInput.value = today;
+      state.followCurrentTime = true;
+      timeInput.value = String(currentMinutes());
+      if (dateChanged) loadData(false); else draw();
+    });
+    dateInput.value = localDateValue();
+    populateDistricts(provinceInput.value);
+    timeInput.value = String(currentMinutes());
+    updateClock();
+    setInterval(updateClock, 1000);
+    loadData();
+  </script>
+</body>
+</html>
