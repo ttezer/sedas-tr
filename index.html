@@ -121,17 +121,17 @@
     .record-plan-top, .record-plan .record-status, .record-plan .record-time { display: none; }
     .hint, .error { margin: 14px 18px; padding: 12px; border-radius: 5px; color: var(--muted); background: #f4f7fa; }
     .error { color: #9a321d; background: #fff2ef; }
-    footer { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 24px; padding: 17px 34px 22px; border-top: 1px solid var(--line); color: var(--muted); background: #fff; font-size: 12px; }
-    footer a { color: #2868b4; }
-    .footer-contact { color: var(--ink); }
-    .footer-contact a { font-weight: 700; text-decoration: none; }
+    .trustbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 7px 24px; padding: 9px 34px; border-bottom: 1px solid var(--line); color: var(--muted); background: #fafcfe; font-size: 11px; }
+    .trustbar a { color: #2868b4; }
+    .trustbar-contact { color: var(--ink); }
+    .trustbar-contact a { font-weight: 700; text-decoration: none; }
     .leaflet-popup-content { margin: 12px 14px; }
     .popup-title { font-weight: 700; margin-bottom: 4px; }
     .popup-meta { color: var(--muted); font-size: 12px; }
     @media (max-width: 1080px) {
       .app-header-top { padding: 0 20px; }
       .app-header-meta { gap: 15px; }
-      .toolbar, .summary-row, footer { padding-right: 20px; padding-left: 20px; }
+      .toolbar, .summary-row, .trustbar { padding-right: 20px; padding-left: 20px; }
       .filter-date, .filter-province, .filter-district { width: auto; flex: 1 1 150px; }
     }
     @media (max-width: 850px) {
@@ -154,7 +154,7 @@
       .app-brand small { font-size: 10px; }
       .app-header-meta { display: flex; gap: 9px; font-size: 11px; }
       .header-reset { font-size: 11px; }
-      .toolbar, .summary-row, footer { padding-right: 12px; padding-left: 12px; }
+      .toolbar, .summary-row, .trustbar { padding-right: 12px; padding-left: 12px; }
       .filter { flex-basis: 100%; }
       .list-head, .record { grid-template-columns: 1.2fr .8fr .85fr; }
       .list-head span:nth-child(4), .record-status { display: none; }
@@ -178,6 +178,12 @@
         </nav>
       </div>
     </header>
+    <section class="trustbar" aria-label="Veri ve iletişim bilgileri">
+      <span id="updatedAt">Veri SEDAŞ’tan alınmıştır: —</span>
+      <span id="bilgilendirme">Bu site resmi SEDAŞ sitesi değildir. Veriler bilgilendirme amacıyla gösterilir.</span>
+      <span id="sss">Kaynak: <a href="https://www.sedas.com/Tr/SupplyContinuityUrl/PlannedView#" target="_blank" rel="noreferrer">SEDAŞ planlı kesinti verisi</a></span>
+      <span class="trustbar-contact" id="iletisim">İletişim: Tacettin TEZER · <a href="mailto:ttezer@gmail.com">ttezer@gmail.com</a></span>
+    </section>
     <section class="toolbar" aria-label="Harita kontrolleri">
       <label class="filter filter-date"><span class="filter-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"></path></svg></span><span class="filter-label">Tarih</span>
         <input id="dateInput" type="date">
@@ -232,12 +238,6 @@
         <div id="recordList"><p class="hint">Veri yükleniyor…</p></div>
       </aside>
     </main>
-    <footer>
-      <span id="updatedAt">Veri SEDAŞ’tan alınmıştır: —</span>
-      <span id="bilgilendirme">Bu site resmi SEDAŞ sitesi değildir. Veriler bilgilendirme amacıyla gösterilir.</span>
-      <span id="sss">Kaynak: <a href="https://www.sedas.com/Tr/SupplyContinuityUrl/PlannedView#" target="_blank" rel="noreferrer">SEDAŞ planlı kesinti verisi</a></span>
-      <span class="footer-contact" id="iletisim">İletişim: Tacettin TEZER · <a href="mailto:ttezer@gmail.com">ttezer@gmail.com</a></span>
-    </footer>
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script>
@@ -573,6 +573,18 @@
         applyPayload(staticPayload);
         return;
       }
+      if (window.__SEDAS_STATIC_ONLY__) {
+        state.payload = null;
+        if (state.plannedLayer) map.removeLayer(state.plannedLayer);
+        if (state.activeLayer) map.removeLayer(state.activeLayer);
+        activeCount.textContent = '0 kayıt';
+        document.getElementById('summaryPlans').textContent = '0';
+        document.getElementById('summaryNeighborhoods').textContent = '0';
+        document.getElementById('summaryActive').textContent = '0';
+        status.textContent = 'Bu yayın sürümünde yalnızca bugün ve yarının verisi bulunur';
+        recordList.innerHTML = '<p class="hint">Seçilen tarih için yayınlanmış veri özeti bulunmuyor. Veri özeti her gün yenilenir; canlı sorgu bu statik sayfada kullanılamaz.</p>';
+        return;
+      }
       state.loading = true;
       refreshButton.disabled = true;
       status.textContent = forceLive ? 'Bugün ve yarın için SEDAŞ canlı sorgusu yapılıyor…' : 'Günlük önbellek yükleniyor…';
@@ -585,7 +597,14 @@
         const requestedDates = forceLive ? [selectedDate, dateOffsetValue(selectedDate, 1)] : [selectedDate];
         const results = await Promise.allSettled(requestedDates.map(async targetDate => {
           const response = await fetch('/api/outages?province=' + encodeURIComponent(selectedProvince) + '&district=' + encodeURIComponent(selectedDistrict) + '&date=' + encodeURIComponent(targetDate) + liveQuery, { cache: 'no-store' });
-          const payload = await response.json();
+          const responseText = await response.text();
+          let payload = null;
+          try {
+            payload = JSON.parse(responseText);
+          } catch (error) {
+            if (!response.ok) throw new Error(targetDate + ': Veri servisi erişilemiyor');
+            throw new Error(targetDate + ': Veri servisi JSON döndürmedi');
+          }
           if (!response.ok) throw new Error(targetDate + ': ' + (payload.error || 'Veri alınamadı'));
           return payload;
         }));
@@ -601,6 +620,7 @@
         state.payload = null;
         if (state.plannedLayer) map.removeLayer(state.plannedLayer);
         if (state.activeLayer) map.removeLayer(state.activeLayer);
+        if (state.districtLayer) map.removeLayer(state.districtLayer);
         activeCount.textContent = '0 kayıt';
         document.getElementById('summaryPlans').textContent = '0';
         document.getElementById('summaryNeighborhoods').textContent = '0';
