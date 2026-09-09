@@ -2,11 +2,13 @@
 
 Kocaeli ve SEDAŞ hizmet bölgesindeki planlı elektrik kesintilerini harita üzerinde gösteren yayın arayüzüdür.
 
-Bu depoda yalnızca web sayfası bulunur. Veri hizmeti ayrı ve kapalı bir ortamdan sağlanır.
+Bu depoda yalnızca web sayfası bulunur. GitHub Pages sürümünde bugün ve yarın için yayın anında oluşturulan veri özeti sayfaya gömülüdür; canlı veri sunucusu bu depoda bulunmaz.
 
 ## Kullanım
 
-`index.html` dosyasını web sunucusunda yayınlayın. Sayfanın çalışması için `/api/outages` uç noktasının aynı yayın adresi üzerinden erişilebilir olması gerekir.
+GitHub Pages: https://ttezer.github.io/sedas-kocaeli/
+
+`index.html` dosyasını herhangi bir statik web sunucusunda da yayınlayabilirsiniz. Veri özeti yayın sırasında güncellenir.
 
 ## Haklar
 
