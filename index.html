@@ -182,7 +182,7 @@
     </main>
     <footer>
       <span id="updatedAt">SEDAŞ’tan alınma zamanı: —</span>
-      <span><a href="https://www.sedas.com/Tr/SupplyContinuityUrl/PlannedView#" target="_blank" rel="noreferrer">SEDAŞ planlı kesinti verisi</a> · Açık veri önbelleği · © OpenStreetMap contributors</span>
+      <span><a href="https://www.sedas.com/Tr/SupplyContinuityUrl/PlannedView#" target="_blank" rel="noreferrer">SEDAŞ planlı kesinti verisi</a> · Açık veri önbelleği · Açık kaynak yol çizgileri</span>
     </footer>
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -401,7 +401,18 @@
         return '<button type="button" class="record status-' + cardStatus + '" data-province="' + escapeHtml(group.province) + '" data-district="' + escapeHtml(group.district) + '" data-neighborhood="' + escapeHtml(group.neighborhood) + '"><span class="record-top"><span>Mahalle: ' + escapeHtml(group.neighborhood) + '</span><span>' + group.plans.length + ' plan</span></span><span class="record-district"><span class="record-label">İl / İlçe:</span> ' + escapeHtml(group.province) + ' / ' + escapeHtml(group.district) + '</span>' + planRows + '</button>';
       }).join('') : '<p class="hint">' + (records.length ? 'Bu saatte aktif planlı kesinti yok.' : 'Seçilen tarih, ' + escapeHtml(province) + ' / ' + escapeHtml(district) + ' kapsamı için kayıt bulunamadı.') + '</p>';
       recordList.querySelectorAll('.record').forEach(button => button.addEventListener('click', () => {
-        const features = allFeatures.filter(feature => feature.properties.province === button.dataset.province && feature.properties.district === button.dataset.district && feature.properties.neighborhood === button.dataset.neighborhood);
+        // SEDAŞ kaydı mahalle adını büyük harfli, geometri verisi ise baş harfleri büyük
+        // veya Türkçe karakterli taşıyabilir. Harita yakınlaştırması aynı ad anahtarıyla
+        // eşleştirilmezse kart çalışır ama ilgili geometri bulunamaz.
+        const provinceKey = nameKey(button.dataset.province);
+        const districtKey = nameKey(button.dataset.district);
+        const neighborhoodKey = nameKey(button.dataset.neighborhood);
+        const features = allFeatures.filter(feature => {
+          const properties = feature.properties || {};
+          return nameKey(properties.province) === provinceKey &&
+            nameKey(properties.district) === districtKey &&
+            nameKey(properties.neighborhood) === neighborhoodKey;
+        });
         const layer = L.geoJSON(collection(features));
         if (layer.getBounds().isValid()) map.fitBounds(layer.getBounds().pad(0.3));
       }));
@@ -467,7 +478,7 @@
         if (state.activeLayer) map.removeLayer(state.activeLayer);
         activeCount.textContent = '0';
         status.textContent = 'Veri alınamadı';
-        recordList.innerHTML = '<p class="error">' + escapeHtml(error.message) + '<br><br>Bu sayfayı <code>kocaeli-server.py</code> ile yerel sunucu üzerinden açın.</p>';
+        recordList.innerHTML = '<p class="error">' + escapeHtml(error.message) + '<br><br>Veri servisi şu anda erişilemiyor.</p>';
       } finally {
         state.loading = false;
         refreshButton.disabled = false;
