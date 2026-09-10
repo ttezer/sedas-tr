@@ -1,6 +1,6 @@
-# Kocaeli SEDAŞ Kesinti Haritası
+# SEDAŞ Kesinti Haritası
 
-[Canlı haritayı aç](https://ttezer.github.io/sedas-kocaeli/)
+[Canlı haritayı aç](https://ttezer.github.io/sedas-tr/)
 
 SEDAŞ hizmet bölgesindeki planlı elektrik kesintilerini tarih, il, ilçe,
 mahalle ve cadde/sokak düzeyinde harita üzerinde gösteren yayın sayfasıdır.
@@ -14,6 +14,8 @@ mahalle ve cadde/sokak düzeyinde harita üzerinde gösteren yayın sayfasıdır
 - Sayfa, yayınlanan veri özetiyle saatlik olarak güncellenir.
 
 ## Kullanım
+
+Harita ilk açılışta Bolu, Düzce, Kocaeli ve Sakarya için `Tüm iller` seçimiyle açılır.
 
 1. Tarih seçin.
 2. İl ve ilçe filtresini kullanın.
